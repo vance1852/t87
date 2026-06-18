@@ -33,5 +33,12 @@ func Connect(dsn string) (*gorm.DB, error) {
 
 // Migrate 自动建表。
 func Migrate(database *gorm.DB) error {
-	return database.AutoMigrate(&models.User{}, &models.Venue{}, &models.Booking{})
+	return database.AutoMigrate(
+		&models.User{},
+		&models.Venue{},
+		&models.Booking{},
+		&models.MaintenanceRule{},
+		&models.MaintenanceTask{},
+		&models.MaintenanceConflict{},
+	)
 }

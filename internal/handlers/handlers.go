@@ -734,7 +734,11 @@ func (h *Handler) MaintenanceCalendar(c *gin.Context) {
 }
 
 func (h *Handler) VenueFreeSlots(c *gin.Context) {
-	vid := c.Param("venue_id")
+	vid := c.Query("venue_id")
+	if vid == "" {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "venue_id参数必填"})
+		return
+	}
 	venueID, err := strconv.ParseUint(vid, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "venue_id不合法"})

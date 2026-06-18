@@ -47,7 +47,6 @@ func main() {
 			secured.GET("/venues/:id", h.GetVenue)
 			secured.PUT("/venues/:id", h.UpdateVenue)
 			secured.DELETE("/venues/:id", h.DeleteVenue)
-			secured.GET("/venues/:venue_id/free-slots", h.VenueFreeSlots)
 
 			secured.GET("/bookings", h.ListBookings)
 			secured.POST("/bookings", h.CreateBooking)
@@ -79,6 +78,7 @@ func main() {
 
 			// ====== 维护日历 & 空档 ======
 			secured.GET("/maintenance/calendar", h.MaintenanceCalendar)
+			secured.GET("/maintenance/free-slots", h.VenueFreeSlots)
 
 			// ====== 统计分析 ======
 			secured.GET("/maintenance/stats", h.MaintenanceStats)

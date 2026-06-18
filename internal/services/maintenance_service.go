@@ -728,23 +728,27 @@ type MaintenanceImpact struct {
 
 // GetMaintenanceStats 按日期范围统计维护影响与完成率。
 func (s *MaintenanceService) GetMaintenanceStats(startDate, endDate string, venueID *uint) (*MaintenanceImpact, error) {
-	q := s.DB.Model(&models.MaintenanceTask{})
-	if venueID != nil && *venueID > 0 {
-		q = q.Where("venue_id = ?", *venueID)
-	}
-	if startDate != "" {
-		q = q.Where("maintain_date >= ?", startDate)
-	}
-	if endDate != "" {
-		q = q.Where("maintain_date <= ?", endDate)
+	var impact MaintenanceImpact
+
+	baseScope := func(db *gorm.DB) *gorm.DB {
+		q := db.Model(&models.MaintenanceTask{})
+		if venueID != nil && *venueID > 0 {
+			q = q.Where("venue_id = ?", *venueID)
+		}
+		if startDate != "" {
+			q = q.Where("maintain_date >= ?", startDate)
+		}
+		if endDate != "" {
+			q = q.Where("maintain_date <= ?", endDate)
+		}
+		return q
 	}
 
-	var impact MaintenanceImpact
-	q.Where("status = ?", models.MaintenanceStatusCompleted).Count(&impact.CompletedCount)
-	q.Where("status = ?", models.MaintenanceStatusPlanned).Count(&impact.PlannedCount)
-	q.Where("status = ?", models.MaintenanceStatusInProgress).Count(&impact.InProgressCount)
-	q.Where("status = ?", models.MaintenanceStatusCancelled).Count(&impact.CancelledCount)
-	q.Count(&impact.TotalTasks)
+	s.DB.Scopes(baseScope).Where("status = ?", models.MaintenanceStatusCompleted).Count(&impact.CompletedCount)
+	s.DB.Scopes(baseScope).Where("status = ?", models.MaintenanceStatusPlanned).Count(&impact.PlannedCount)
+	s.DB.Scopes(baseScope).Where("status = ?", models.MaintenanceStatusInProgress).Count(&impact.InProgressCount)
+	s.DB.Scopes(baseScope).Where("status = ?", models.MaintenanceStatusCancelled).Count(&impact.CancelledCount)
+	s.DB.Scopes(baseScope).Count(&impact.TotalTasks)
 
 	if impact.TotalTasks > 0 {
 		impact.CompletionRate = float64(impact.CompletedCount) / float64(impact.TotalTasks) * 100
@@ -752,17 +756,7 @@ func (s *MaintenanceService) GetMaintenanceStats(startDate, endDate string, venu
 
 	// 计算损失时段和营收：仅统计未取消的维护
 	var tasks []models.MaintenanceTask
-	q2 := s.DB.Model(&models.MaintenanceTask{})
-	if venueID != nil && *venueID > 0 {
-		q2 = q2.Where("venue_id = ?", *venueID)
-	}
-	if startDate != "" {
-		q2 = q2.Where("maintain_date >= ?", startDate)
-	}
-	if endDate != "" {
-		q2 = q2.Where("maintain_date <= ?", endDate)
-	}
-	q2.Where("status <> ?", models.MaintenanceStatusCancelled).Find(&tasks)
+	s.DB.Scopes(baseScope).Where("status <> ?", models.MaintenanceStatusCancelled).Find(&tasks)
 
 	venuePriceCache := make(map[uint]float64)
 	for _, t := range tasks {
@@ -781,7 +775,7 @@ func (s *MaintenanceService) GetMaintenanceStats(startDate, endDate string, venu
 
 	// 平均耗时
 	var completedTasks []models.MaintenanceTask
-	s.DB.Model(&models.MaintenanceTask{}).
+	s.DB.Scopes(baseScope).
 		Where("status = ? AND actual_duration IS NOT NULL", models.MaintenanceStatusCompleted).
 		Find(&completedTasks)
 	if len(completedTasks) > 0 {
